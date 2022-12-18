@@ -1,19 +1,28 @@
+package org.github.ainr
+
 import cats.effect.{IO, IOApp}
 import cats.syntax.all._
 import fs2.kafka._
+import org.github.ainr.tinvest.TInvestApp
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
 object Main extends IOApp.Simple {
 
-  val consumerSettings: ConsumerSettings[IO, String, String] =
+  override def run: IO[Unit] = {
+    List(
+      TInvestApp.run()
+    ).parSequence.void
+  }
+
+  private val consumerSettings: ConsumerSettings[IO, String, String] =
     ConsumerSettings[IO, String, String]
       .withAutoOffsetReset(AutoOffsetReset.Latest)
       .withBootstrapServers("localhost:9092")
       .withGroupId("group")
 
-  val producerSettings: ProducerSettings[IO, String, String] =
+  private val producerSettings: ProducerSettings[IO, String, String] =
     ProducerSettings[IO, String, String]
       .withBootstrapServers("localhost:9092")
 
@@ -69,6 +78,6 @@ object Main extends IOApp.Simple {
       }
   }
 
-  def run: IO[Unit] = (consumerStream concurrently producerStream).compile.drain
+  //def run: IO[Unit] = (consumerStream concurrently producerStream).compile.drain
   //converter.compile.drain
 }
