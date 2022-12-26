@@ -1,14 +1,40 @@
+import sbtbuildinfo.BuildInfoKeys
+
 ThisBuild / version := "0.1.0-SNAPSHOT"
 
 ThisBuild / scalaVersion := "2.13.10"
 
 lazy val root = (project in file("."))
+  .enablePlugins(BuildInfoPlugin)
+  .enablePlugins(GitVersioning)
+  .enablePlugins(Fs2Grpc)
   .settings(
     name := "FinStatus",
-    assembly / assemblyJarName := "App.jar"
+    organization := "org.github.ainr",
+    assembly / assemblyJarName := "App.jar",
+    buildInfoKeys ++= Seq[BuildInfoKey](
+      name,
+      version,
+      scalaVersion,
+      sbtVersion,
+      resolvers,
+      BuildInfoKey.action("buildTime") {
+        System.currentTimeMillis
+      },
+      BuildInfoKey.action("gitHeadCommit") {
+        git.gitHeadCommit.value map { sha => s"v$sha" }
+      },
+      BuildInfoKey.action("github") {
+        "https://github.com/a-khakimov/"
+      },
+    ),
+    scalacOptions ++= Seq(
+      "-language:postfixOps",
+      "-language:implicitConversions",
+      "-feature"
+    ),
+    buildInfoPackage := "org.github.ainr"
   )
-
-//scalapbCodeGeneratorOptions += CodeGeneratorOption.JavaConversions
 
 libraryDependencies ++= Seq(
   "io.grpc" % "grpc-netty-shaded" % scalapb.compiler.Version.grpcJavaVersion,
@@ -23,7 +49,14 @@ libraryDependencies ++= Seq(
   "is.cir" %% "ciris" % "2.4.0",
   "lt.dvim.ciris-hocon" %% "ciris-hocon" % "1.0.1",
   "org.typelevel" %% "log4cats-core" % "2.5.0",
-  "org.typelevel" %% "log4cats-slf4j" % "2.5.0"
+  "org.typelevel" %% "log4cats-slf4j" % "2.5.0",
+  "com.lihaoyi" %% "sourcecode" % "0.3.0",
+  "io.circe" %% "circe-core" % "0.14.3",
+  "io.circe" %% "circe-parser" % "0.14.3",
+  "io.circe" %% "circe-generic" % "0.14.3",
+  "io.github.pityka" %% "nspl-awt" % "0.6.0",
+  "io.github.apimorphism" %% "telegramium-core" % "7.64.0",
+  "io.github.apimorphism" %% "telegramium-high" % "7.64.0"
 )
 
 // (optional) If you need scalapb/scalapb.proto or anything from
@@ -32,4 +65,8 @@ libraryDependencies ++= Seq(
   "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf"
 )
 
-enablePlugins(Fs2Grpc)
+ThisBuild / assemblyMergeStrategy := {
+  case PathList("org", "slf4j", xs @ _*) => MergeStrategy.first
+  case x                                 => (ThisBuild / assemblyMergeStrategy).value(x)
+}
+
