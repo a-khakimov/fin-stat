@@ -1,0 +1,12 @@
+
+![](http://www.plantuml.com/plantuml/png/jLJDJXH14BxtKvJ4A-5k207K6AA72Sf9E8n33qnsjdkS7ox611RH0qPCFEXD7s54DhikBFiArMzaLGraTXj8zE1XihrLNtrTKzzNiroKOLvMtLJTIqoKLjiQ5gFKLjk9APATtNAX4yQTS4cfefEOBCp3BdIjiT5kRhiQohpIIWaUtYY0N4TbQ7PI3NCl4jEnSGnhPayN9Qm4QtCG5b0cydybIzHRfMRnLy1W5fWfPMof8UTsmCRmiarjgNd0RpXsFUpZBxUFjNkFGtS2xW1kDi3WxtY9PpWXq06Ei0OSOqreYlvqnqJ3nJZ40LuGuvWV2H7sKhBxX3obPyHaNx762OVeEcOWC6VFcpByxJD9Q4BmVTTpxoXqxawaANT8nUUK7xLlqFPqNUPtGM2ye3jypa-0fq2H3zWdP1_Ft4UbpJRm67cOfF7SKvPrqsoQnVkDmfj6nYvnqV9rfIi2FWjfU5cUH1hqdZObAMEp919mIhc0KuybqnO5DYzZcoRsParsdMfgF1UiLw_e9wlIGaEOPLAHSopW49kX1RUtC7IMVDMMLxP9TTouPePcwqul_9NuiBwnkh3n_16pVEOo4My0H5VJtp79TWJ4KmEX9uq8B0qzaiK-QIRg3Ba7TqoA2QgvUCYyN-GecAkBQqvHgM_NKw2JiCiEY2acN0V2ES0HuOvkUJCAjiRmjsnwblysBhQgRyd_EQaVH3MGCHouGnh5I5QYtIawzLtlzZcHiB8dlJlQRiVJVhbWSNv-QUe31G_WoNhmK4r52E1lXv_s5y63CyQplbV1Y5d7BrEtLJVz0m00)
+
+### TODO
+
+- [x] Подписка на события изменения котировок
+- [x] Запрос обновлений изменений портфеля
+- [x] Публикация событий по котировкам USD/RUB в очередь
+- [x] Подписка и обработка событий по котировкам USD/RUB из очереди на стороне RublePulseApp (для устранения шумов и резких скачков можно использовать скользящую среднюю)
+- [x] Публикация событий по портфелю в очередь
+- [ ] Подписка и обработка событий по портфелю из очереди на стороне PortfolioApp
+- [ ] Разбить приложение на отдельные модули или репозитории
