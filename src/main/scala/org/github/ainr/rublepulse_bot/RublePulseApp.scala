@@ -9,10 +9,12 @@ import org.github.ainr.graphs.Graphs
 import org.github.ainr.kafka.Consumer
 import org.github.ainr.logger.CustomizedLogger
 import org.github.ainr.telegram.BotModule
+import org.github.ainr.telegram.reaction.SendText
 import org.http4s
 import org.http4s.blaze.client.BlazeClientBuilder
 import org.typelevel.log4cats.LoggerName
 import org.typelevel.log4cats.slf4j.Slf4jLogger
+import telegramium.bots.ChatIntId
 
 import scala.language.postfixOps
 
@@ -44,6 +46,7 @@ object RublePulseApp {
           consumer <- Consumer[IO](configs.consumer, logger)
           rublePulseService = RublePulseService(configs.rublePulseConfig, consumer, botModule.bot, logger, graphs)
           _ <- resource.supervisor.supervise(rublePulseService.start)
+          _ <- botModule.bot.interpret(SendText(ChatIntId(174861972), "App started") :: Nil)
           _ <- logger.info("App started")
           _ <- botModule.bot.start()
         } yield ()

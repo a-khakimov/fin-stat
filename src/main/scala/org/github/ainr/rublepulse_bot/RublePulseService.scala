@@ -72,11 +72,10 @@ object RublePulseService {
       }.reverse
     }
 
-    private def scale(double: Double): Double = {
+    private def scale(double: Double): Double =
       BigDecimal(double)
         .setScale(2, BigDecimal.RoundingMode.HALF_DOWN)
         .toDouble
-    }
 
     private def buildCharts(prices: List[Double]): F[File] = graphs.plot(
       Input(
