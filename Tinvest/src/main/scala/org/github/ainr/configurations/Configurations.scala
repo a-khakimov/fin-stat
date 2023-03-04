@@ -5,8 +5,6 @@ import cats.syntax.all._
 import ciris.{ConfigValue, Effect}
 import com.typesafe.config.ConfigFactory
 import lt.dvim.ciris.Hocon._
-import org.github.ainr.telegram.conf.TelegramConfig
-import telegramium.bots.ChatIntId
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -14,7 +12,6 @@ final case class Configurations(
   tinkoffInvestApiConfig: TinkoffInvestApiConfig,
   tinvestConfig: TinvestConfig,
   consumer: ConsumerConfig,
-  telegram: TelegramConfig,
   rublePulseConfig: RublePulseConfig
 )
 
@@ -37,7 +34,6 @@ final case class ConsumerConfig(
 
 final case class RublePulseConfig(
   figi: String,
-  chatId: ChatIntId,
   priceLimit: Float, // percents
   timeLimit: FiniteDuration,
   sizeLimit: Int,
@@ -71,7 +67,6 @@ object Configurations {
     val tinkoffInvestApi = hoconAt(config)("tinkoff_invest_api")
     val tinvest: HoconAt = hoconAt(config)("tinvest")
     val consumer = hoconAt(config)("consumer")
-    val telegram = hoconAt(config)("telegram")
     val rublePulse = hoconAt(config)("rublePulse")
 
     val tinkoffInvestApiConfig: ConfigValue[Effect, TinkoffInvestApiConfig] = (
@@ -91,11 +86,6 @@ object Configurations {
       consumer("groupId").as[String]
     ).mapN(ConsumerConfig.apply)
 
-    val telegramConfig: ConfigValue[Effect, TelegramConfig] = (
-      telegram("url").as[String],
-      telegram("token").as[String]
-    ).mapN(TelegramConfig.apply)
-
     val tinvestConfig = {
       (
         producerConfig(tinvest, "producers.lastPriceEvents"),
@@ -113,13 +103,12 @@ object Configurations {
 
     val rublePulseConfig: ConfigValue[Effect, RublePulseConfig] = (
       rublePulse("figi").as[String],
-      rublePulse("chatId").as[Long].map(ChatIntId),
       rublePulse("priceLimit").as[Float],
       rublePulse("timeLimit").as[FiniteDuration],
       rublePulse("sizeLimit").as[Int]
     ).mapN(RublePulseConfig.apply)
 
-    (tinkoffInvestApiConfig, tinvestConfig, consumerConfig, telegramConfig, rublePulseConfig)
+    (tinkoffInvestApiConfig, tinvestConfig, consumerConfig, rublePulseConfig)
       .mapN(Configurations.apply)
       .load[F]
   }
