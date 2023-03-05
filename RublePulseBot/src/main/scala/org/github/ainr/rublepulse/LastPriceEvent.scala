@@ -1,4 +1,4 @@
-package org.github.ainr.rublepulse_bot
+package org.github.ainr.rublepulse
 
 final case class LastPriceEvent(
   figi: String,

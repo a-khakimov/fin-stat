@@ -1,15 +1,16 @@
-package org.github.ainr.rublepulse_bot
+package org.github.ainr.rublepulse
 
 import cats.Monad
 import cats.data.NonEmptyList
-import cats.effect.Concurrent
+import cats.effect.{Concurrent, Temporal}
 import cats.syntax.all._
+import fs2.Chunk
 import io.circe.generic.auto._
 import io.circe.parser._
 import org.github.ainr.configurations.RublePulseConfig
 import org.github.ainr.graphs.{Graphs, Input}
-import org.github.ainr.kafka.Consumer
 import org.github.ainr.logger.CustomizedLogger
+import org.github.ainr.redis.consumer.Consumer
 import org.github.ainr.telegram.reaction.{BotReactionsInterpreter, SendPhoto}
 import org.nspl
 import telegramium.bots.InputPartFile
@@ -21,25 +22,20 @@ trait RublePulseService[F[_]] {
 }
 
 object RublePulseService {
-  def apply[F[_]: Monad: Concurrent](
+  def apply[F[_]: Monad: Concurrent: Temporal](
     config: RublePulseConfig,
-    consumer: Consumer[F],
+    consumer: Consumer[F, LastPriceEvent],
     bot: BotReactionsInterpreter[F],
     logger: CustomizedLogger[F],
     graphs: Graphs[F]
   ): RublePulseService[F] = new RublePulseService[F] {
 
-    private def processEvents(chunk: List[(String, String)]): F[Unit] = {
-      val lastPrices =
-        chunk
-          .map { case (_, value) => decode[LastPriceEvent](value) }
-          .collect { case Right(event) if event.figi === config.figi => event }
-          .map(_.price)
-
-      println(s"Last prices ${lastPrices.mkString(", ")}")
+    private def processEvents(lastPrices: Chunk[LastPriceEvent]): F[Unit] = {
+      println(s"Last prices ${lastPrices.toList.mkString(", ")}")
 
       lastPrices
         .toNel
+        .map(_.map(_.price))
         .map(movingAverage(_, 20))
         .flatMap(_.toNel)
         .flatMap(prices => analyse(prices).map(result => (prices, result)))
@@ -47,7 +43,7 @@ object RublePulseService {
           case (prices, analyseResult) => for {
             charts <- buildCharts(prices.toList)
             _ <- bot.interpret(SendPhoto(chatId = config.chatId, photo = InputPartFile(charts), caption = analyseResult.some) :: Nil)
-            _ <- logger.info(s"Processing records: ${lastPrices.mkString(", ")}")
+            _ <- logger.info(s"Processing records: ${lastPrices.toList.mkString(", ")}")
           } yield ()
         }.as(())
       }
@@ -57,9 +53,11 @@ object RublePulseService {
       val limit = (prices.head * config.priceLimit) / 100
       val minLimit = prices.head - limit
       val maxLimit = prices.head + limit
-      if (prices.last < minLimit) Some(s"Рубль окреп на ${scale(prices.head - prices.last)}")
-      else if (prices.last > maxLimit) Some(s"Рубль ослаб на ${scale(prices.last - prices.head)}")
-      else None
+      prices.last match {
+        case price if price < minLimit => Some(s"Рубль окреп на ${scale(prices.head - prices.last)}")
+        case price if price > maxLimit => Some(s"Рубль ослаб на ${scale(prices.last - prices.head)}")
+        case _ => None
+      }
     }
 
     private def movingAverage(values: NonEmptyList[Double], period: Int): List[Double] = {
@@ -91,6 +89,19 @@ object RublePulseService {
       )
     )
 
-    override def start: F[Unit] = consumer.consume(config.sizeLimit, config.timeLimit, processEvents)
+    // TODO: Create repo layer
+    private def fromJson: fs2.Pipe[F, String, LastPriceEvent] =
+      _.evalMap(e => decode[LastPriceEvent](e).pure[F])
+        .collect {
+          case Right(event) if event.figi === config.figi => event
+        }
+
+    override def start: F[Unit] =
+      consumer
+        .consume(fromJson)
+        .groupWithin(config.sizeLimit, config.timeLimit)
+        .evalMap(processEvents)
+        .compile
+        .drain
   }
 }
