@@ -1,19 +1,23 @@
 package org.github.ainr.tinvest.lastprice
 
 import cats.Monad
+import cats.effect.kernel.Temporal
 import cats.syntax.all._
-import fs2.kafka.ProducerResult
+import io.circe.generic.auto._
+import io.circe.syntax._
 import org.github.ainr.configurations.TinvestConfig
-import org.github.ainr.kafka.Producer
+import org.github.ainr.redis.producer.Producer
 import ru.tinkoff.piapi.contract.v1.marketdata._
 
-class LastPriceService[F[_]: Monad](
+import scala.concurrent.duration.DurationInt
+
+class LastPriceService[F[_]: Monad: Temporal](
   configs: TinvestConfig,
   lastPriceRepository: LastPriceRepository[F],
-  producer: Producer[F]
+  producer: Producer[F, LastPriceEvent]
 ) {
 
-  def stream: F[fs2.Stream[F, ProducerResult[Unit, String, String]]] = {
+  def stream: F[fs2.Stream[F, Unit]] = {
     lastPriceRepository
       .stream(
         MarketDataServerSideStreamRequest(
@@ -25,19 +29,22 @@ class LastPriceService[F[_]: Monad](
       )
       .map { marketData =>
         producer.produce(
-          marketData.map(getLastPrice).collect { case Some(a) => a }
-        )
+          //fs2.Stream.awakeEvery(1000 milliseconds) >> fs2.Stream.eval(LastPriceEvent("1212", 1).pure)
+          marketData
+            .map(getLastPrice)
+            .collect { case Some(a) => a }
+        )(toJson)
       }
   }
 
-  def getLastPrice(response: MarketDataResponse): Option[(String, String)] = { // todo - replace raw String to Type
-    val instrumentUid = response.payload.lastPrice.map(_.instrumentUid)
-    val event = (
+  private def toJson: fs2.Pipe[F, LastPriceEvent, String] =
+    _.evalMap(_.asJson.noSpaces.pure[F])
+
+  def getLastPrice(response: MarketDataResponse): Option[LastPriceEvent] = { // todo - replace raw String to Type
+    (
       response.payload.lastPrice.map(_.figi),
       response.payload.lastPrice.flatMap(_.price.flatMap(quotationToDouble))
     ).mapN(LastPriceEvent)
-
-    (instrumentUid, event.map(_.toString)).mapN((_, _))
   }
 
   private val quotationToDouble: ru.tinkoff.piapi.contract.v1.common.Quotation => Option[Double] =

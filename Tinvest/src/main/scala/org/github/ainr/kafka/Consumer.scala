@@ -9,6 +9,7 @@ import org.github.ainr.logger.CustomizedLogger
 import scala.concurrent.duration.FiniteDuration
 
 trait Consumer[F[_]] {
+
   def consume(processEvent: (String, String) => F[Unit]): F[Unit]
 
   def consume(chunkSize: Int, timeout: FiniteDuration, processEvents: List[(String, String)] => F[Unit]): F[Unit]

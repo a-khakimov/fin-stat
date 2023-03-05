@@ -26,7 +26,7 @@ lazy val root = (project in file("."))
       },
       BuildInfoKey.action("github") {
         "https://github.com/a-khakimov/"
-      },
+      }
     ),
     scalacOptions ++= Seq(
       "-language:postfixOps",
@@ -55,6 +55,8 @@ libraryDependencies ++= Seq(
   "io.circe" %% "circe-core" % "0.14.4",
   "io.circe" %% "circe-parser" % "0.14.4",
   "io.circe" %% "circe-generic" % "0.14.4",
+  "dev.profunktor" %% "redis4cats-effects" % "1.4.0",
+  "dev.profunktor" %% "redis4cats-streams" % "1.4.0"
 )
 
 
