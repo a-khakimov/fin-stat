@@ -25,7 +25,7 @@ lazy val root = (project in file("."))
       },
       BuildInfoKey.action("github") {
         "https://github.com/a-khakimov/"
-      },
+      }
     ),
     scalacOptions ++= Seq(
       "-language:postfixOps",
@@ -52,7 +52,9 @@ libraryDependencies ++= Seq(
   "io.circe" %% "circe-generic" % "0.14.4",
   "io.github.pityka" %% "nspl-awt" % "0.6.0",
   "io.github.apimorphism" %% "telegramium-core" % "7.65.0",
-  "io.github.apimorphism" %% "telegramium-high" % "7.65.0"
+  "io.github.apimorphism" %% "telegramium-high" % "7.65.0",
+  "dev.profunktor" %% "redis4cats-effects" % "1.4.0",
+  "dev.profunktor" %% "redis4cats-streams" % "1.4.0"
 )
 
 ThisBuild / assemblyMergeStrategy := {

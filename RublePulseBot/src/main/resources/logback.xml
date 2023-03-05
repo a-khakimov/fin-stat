@@ -12,21 +12,6 @@
             <totalSizeCap>1GB</totalSizeCap>
         </rollingPolicy>
     </appender>
-    <appender name="TInvestApp" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>TInvestApp.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>TInvestApp.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-            <maxFileSize>100MB</maxFileSize>
-            <maxHistory>14</maxHistory>
-            <totalSizeCap>1GB</totalSizeCap>
-        </rollingPolicy>
-        <encoder>
-            <pattern>%d{dd.MM.yyyy HH:mm:ss.SSS} [%X{source}] [trackingID %X{trackingID}] [%thread] [chatID %X{chatID}] %-5level %logger{20} - %msg%n</pattern>
-        </encoder>
-    </appender>
-    <logger name="TInvestApp" level="DEBUG" additivity="false">
-        <appender-ref ref="TInvestApp"/>
-    </logger>
     <appender name="RublePulseApp" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>RublePulseApp.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
