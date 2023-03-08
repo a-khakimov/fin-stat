@@ -1,10 +1,13 @@
 package org.github.ainr.configurations
 
+import cats.Show
 import cats.effect.Async
 import cats.syntax.all._
-import ciris.{ConfigValue, Effect}
+import ciris.{ConfigValue, Effect, Secret}
 import com.typesafe.config.ConfigFactory
 import lt.dvim.ciris.Hocon._
+import org.github.ainr.logger.CustomizedLogger
+import show._
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -18,7 +21,7 @@ final case class Configurations(
 final case class TinkoffInvestApiConfig(
   url: String,
   port: Int,
-  token: String
+  token: Secret[String]
 )
 
 final case class ProducerConfig(
@@ -58,9 +61,25 @@ final case class Portfolio(
   accounts: List[String]
 )
 
+object show {
+  implicit val showProducerConfig = new Show[ProducerConfig] {
+    override def show(t: ProducerConfig): String = s"ProducerConfig[url=${t.url} topic=${t.topic}]"
+  }
+
+  implicit val showConfigurations = new Show[Configurations] {
+    override def show(t: Configurations): String =
+      s"""Configurations:
+        |tinkoffInvestApiConfig=${t.rublePulseConfig}
+        |tinvestConfig=${t.tinvestConfig}
+        |consumer=${t.consumer}
+        |rublePulseConfig=${t.rublePulseConfig}
+        |""".stripMargin
+  }
+}
+
 object Configurations {
 
-  def load[F[_]: Async]: F[Configurations] = {
+  def load[F[_]: Async](logger: CustomizedLogger[F]): F[Configurations] = {
 
     val config = ConfigFactory.load("reference.conf")
 
@@ -72,12 +91,12 @@ object Configurations {
     val tinkoffInvestApiConfig: ConfigValue[Effect, TinkoffInvestApiConfig] = (
       tinkoffInvestApi("url").as[String],
       tinkoffInvestApi("port").as[Int],
-      tinkoffInvestApi("token").as[String]
+      tinkoffInvestApi("token").as[String].secret
     ).mapN(TinkoffInvestApiConfig.apply)
 
-    def producerConfig(hocon: HoconAt, path: String): ConfigValue[Effect, ProducerConfig] = (
-      hocon(s"$path.url").as[String],
-      hocon(s"$path.topic").as[String]
+    def producerConfig(path: String): ConfigValue[Effect, ProducerConfig] = (
+      tinvest(s"$path.url").as[String],
+      tinvest(s"$path.topic").as[String]
     ).mapN(ProducerConfig.apply)
 
     val consumerConfig: ConfigValue[Effect, ConsumerConfig] = (
@@ -86,20 +105,14 @@ object Configurations {
       consumer("groupId").as[String]
     ).mapN(ConsumerConfig.apply)
 
-    val tinvestConfig = {
+    val tinvestConfig = (
+      tinvest("subscribes.lastPricesFor").as[List[String]].map(Subscribes),
+      tinvest("portfolio.accounts").as[List[String]].map(Portfolio),
       (
-        producerConfig(tinvest, "producers.lastPriceEvents"),
-        producerConfig(tinvest, "producers.portfolioEvents")
-      ).flatMapN { case (lastPriceProducer, portfolioProducer) =>
-        ConfigValue.default(
-          TinvestConfig(
-            Subscribes(toList(config.getStringList("tinvest.subscribes.lastPricesFor"))), // WTF? ciris hasn't List[T] decoder
-            Portfolio(toList(config.getStringList("tinvest.portfolio.accounts"))),
-            Producers(lastPriceProducer, portfolioProducer)
-          )
-        )
-      }
-    }
+        producerConfig("producers.lastPriceEvents"),
+        producerConfig("producers.portfolioEvents")
+      ).mapN(Producers),
+    ).mapN(TinvestConfig)
 
     val rublePulseConfig: ConfigValue[Effect, RublePulseConfig] = (
       rublePulse("figi").as[String],
@@ -108,16 +121,10 @@ object Configurations {
       rublePulse("sizeLimit").as[Int]
     ).mapN(RublePulseConfig.apply)
 
-    (tinkoffInvestApiConfig, tinvestConfig, consumerConfig, rublePulseConfig)
-      .mapN(Configurations.apply)
-      .load[F]
-  }
+    val configsF = (
+      tinkoffInvestApiConfig, tinvestConfig, consumerConfig, rublePulseConfig
+    ).mapN(Configurations.apply).load[F]
 
-  // this is not ok
-  def toList[A](collection: java.util.Collection[A]): List[A] = {
-    val builder = List.newBuilder[A]
-    val it = collection.iterator()
-    while (it.hasNext) builder += it.next()
-    builder.result()
+    configsF <* configsF.map(configs => println(configs.show))
   }
 }

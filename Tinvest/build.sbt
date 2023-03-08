@@ -11,7 +11,8 @@ lazy val root = (project in file("."))
   .settings(
     name := "tinvest",
     organization := "org.github.ainr",
-    assembly / assemblyJarName := "TinvestApp.jar",
+    assembly / assemblyJarName := "App.jar",
+    //assembly / logLevel := Level.Debug,
     buildInfoKeys ++= Seq[BuildInfoKey](
       name,
       version,
@@ -37,10 +38,9 @@ lazy val root = (project in file("."))
   )
 
 libraryDependencies ++= Seq(
-  "io.grpc" % "grpc-netty-shaded" % scalapb.compiler.Version.grpcJavaVersion,
+  "io.grpc" % "grpc-netty-shaded" % "1.53.0",
   "io.grpc" % "grpc-protobuf" % "1.53.0",
-  //"ch.qos.logback" % "logback-classic" % "1.2.3",
-  //"com.typesafe.scala-logging" %% "scala-logging" % "3.9.4",
+  "io.grpc" % "grpc-api" % "1.53.0",
   "co.fs2" %% "fs2-io" % "3.6.1",
   "co.fs2" %% "fs2-core" % "3.6.1",
   "co.fs2" %% "fs2-reactive-streams" % "3.6.1",
@@ -52,9 +52,9 @@ libraryDependencies ++= Seq(
   "org.typelevel" %% "log4cats-core" % "2.4.0",
   "org.typelevel" %% "log4cats-slf4j" % "2.4.0",
   "org.slf4j" % "slf4j-api" % "1.7.36",
-  "io.circe" %% "circe-core" % "0.14.4",
-  "io.circe" %% "circe-parser" % "0.14.4",
-  "io.circe" %% "circe-generic" % "0.14.4",
+  "io.circe" %% "circe-core" % "0.14.5",
+  "io.circe" %% "circe-parser" % "0.14.5",
+  "io.circe" %% "circe-generic" % "0.14.5",
   "dev.profunktor" %% "redis4cats-effects" % "1.4.0",
   "dev.profunktor" %% "redis4cats-streams" % "1.4.0"
 )
@@ -63,5 +63,11 @@ libraryDependencies ++= Seq(
 // (optional) If you need scalapb/scalapb.proto or anything from
 // google/protobuf/*.proto
 libraryDependencies ++= Seq(
-  "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf"
+  "com.thesamet.scalapb" %% "scalapb-runtime" % "0.11.13" % "protobuf"
 )
+
+ThisBuild / assemblyMergeStrategy := {
+  case PathList("org", "slf4j", xs @ _*) => MergeStrategy.first
+  case PathList("META-INF", "io.netty.versions.properties", xs @ _*) => MergeStrategy.first
+  case x                                 => (ThisBuild / assemblyMergeStrategy).value(x)
+}

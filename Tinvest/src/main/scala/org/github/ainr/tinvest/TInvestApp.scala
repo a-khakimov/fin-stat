@@ -11,7 +11,6 @@ import org.github.ainr.configurations.Configurations
 import org.github.ainr.context.Context
 import org.github.ainr.logger.CustomizedLogger
 import org.github.ainr.tinvest.lastprice.LastPriceModule
-import org.github.ainr.tinvest.portfolio.PortfolioModule
 import org.typelevel.log4cats.LoggerName
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import ru.tinkoff.piapi.contract.v1.instruments.InstrumentsServiceFs2Grpc
@@ -44,19 +43,19 @@ object TInvestApp extends IOApp.Simple {
     grpcChannel <- Channel[IO](configs.tinkoffInvestApiConfig.url, configs.tinkoffInvestApiConfig.port)
   } yield Resources(redisClient, grpcChannel)
 
-  def run: IO[Unit] = {
-    Configurations.load[IO].flatMap {
+  def run: IO[Unit] = for {
+    context <- Context.make
+    logger = CustomizedLogger(
+      Slf4jLogger.getLogger[IO](Sync[IO], LoggerName("TInvestApp")),
+      context
+    )
+    _ <- Configurations.load[IO](logger).flatMap {
       configs =>
         resources(configs)
           .flatMap(resource => servicesResource[IO](resource.grpcChannel).map(_ -> resource))
           .flatMap {
             case (grpcServices, resource) =>
               for {
-                context <- Resource.eval(Context.make)
-                logger = CustomizedLogger(
-                  Slf4jLogger.getLogger[IO](Sync[IO], LoggerName("TInvestApp")),
-                  context
-                )
                 lastPriceModule <- LastPriceModule.build(resource.redisClient, logger, configs, grpcServices)
               } yield lastPriceModule
           }
@@ -64,5 +63,5 @@ object TInvestApp extends IOApp.Simple {
             lastPriceModule => lastPriceModule.run
           }
     }
-  }
+  } yield ()
 }

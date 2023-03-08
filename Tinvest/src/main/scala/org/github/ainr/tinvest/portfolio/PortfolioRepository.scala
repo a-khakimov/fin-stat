@@ -18,15 +18,16 @@ trait PortfolioRepository[F[_]] {
 object PortfolioRepository {
   def apply[F[_]: Async](
     logger: CustomizedLogger[F],
-    configurations: Configurations,
+    configs: Configurations,
     operationsStreamService: OperationsStreamServiceFs2Grpc[F, Metadata],
     operationsService: OperationsServiceFs2Grpc[F, Metadata],
   ): F[PortfolioRepository[F]] = Async[F].delay {
+
     new PortfolioRepository[F] {
 
       override def portfolioStream(accounts: List[String]): F[fs2.Stream[F, PortfolioStreamResponse]] = {
         for {
-          metadata <- AuthMetadata[F](configurations.tinkoffInvestApiConfig.token)
+          metadata <- authMetadata
           baseStream = operationsStreamService.portfolioStream(PortfolioStreamRequest(accounts), metadata)
         } yield baseStream.handleErrorWith {
           cause =>
@@ -37,9 +38,11 @@ object PortfolioRepository {
       }
 
       def getPortfolio(account: String): F[PortfolioResponse] = for {
-        metadata <- AuthMetadata[F](configurations.tinkoffInvestApiConfig.token)
+        metadata <- authMetadata
         portfolio <- operationsService.getPortfolio(PortfolioRequest(account), metadata)
       } yield portfolio
+
+      private def authMetadata: F[Metadata] = AuthMetadata[F](configs.tinkoffInvestApiConfig.token.value)
     }
   }
 }

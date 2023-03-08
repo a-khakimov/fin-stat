@@ -14,15 +14,16 @@ trait LastPriceRepository[F[_]] {
 
 object LastPriceRepository {
   def apply[F[_]: Async](
-    configurations: Configurations,
+    configs: Configurations,
     marketDataStreamService: MarketDataStreamServiceFs2Grpc[F, Metadata],
     logger: CustomizedLogger[F]
   ): F[LastPriceRepository[F]] = Async[F].delay {
 
     new LastPriceRepository[F] {
+
       override def stream(request: MarketDataServerSideStreamRequest): F[fs2.Stream[F, MarketDataResponse]] = {
         for {
-          metadata <- AuthMetadata[F](configurations.tinkoffInvestApiConfig.token)
+          metadata <- authMetadata
           baseStream = marketDataStreamService.marketDataServerSideStream(request, metadata)
         } yield baseStream.handleErrorWith {
           cause =>
@@ -31,6 +32,8 @@ object LastPriceRepository {
               .flatMap(_ => baseStream)
         }
       }
+
+      private def authMetadata: F[Metadata] = AuthMetadata[F](configs.tinkoffInvestApiConfig.token.value)
     }
   }
 }
