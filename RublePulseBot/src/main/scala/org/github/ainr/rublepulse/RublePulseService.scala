@@ -2,6 +2,7 @@ package org.github.ainr.rublepulse
 
 import cats.Monad
 import cats.data.NonEmptyList
+import cats.implicits.catsSyntaxList
 import cats.effect.{Concurrent, Temporal}
 import cats.syntax.all._
 import fs2.Chunk
@@ -37,11 +38,10 @@ object RublePulseService {
         .toNel
         .map(_.map(_.price))
         .map(movingAverage(_, 20))
-        .flatMap(_.toNel)
         .flatMap(prices => analyse(prices).map(result => (prices, result)))
         .traverse {
           case (prices, analyseResult) => for {
-            charts <- buildCharts(prices.toList)
+            charts <- buildCharts(prices)
             _ <- bot.interpret(SendPhoto(chatId = config.chatId, photo = InputPartFile(charts), caption = analyseResult.some) :: Nil)
             _ <- logger.info(s"Processing records: ${lastPrices.toList.mkString(", ")}")
           } yield ()
@@ -60,14 +60,14 @@ object RublePulseService {
       }
     }
 
-    private def movingAverage(values: NonEmptyList[Double], period: Int): List[Double] = {
+    private def movingAverage(values: NonEmptyList[Double], period: Int): NonEmptyList[Double] = {
       val first = values.take(period).sum / period
       val subtract = values.toList.map(_ / period)
       val add = subtract.drop(period)
       val addAndSubtract = add.zip(subtract).map(Function.tupled(_ - _))
-      addAndSubtract.foldLeft(first :: List.fill(period - 1)(values.head)) {
-        (acc, add) => (add + acc.head) :: acc
-      }.reverse
+
+      List.fill(period - 1)(values.head) ++:
+        addAndSubtract.scanLeftNel(first)(_ + _)
     }
 
     private def scale(double: Double): Double =
@@ -75,15 +75,15 @@ object RublePulseService {
         .setScale(2, BigDecimal.RoundingMode.HALF_DOWN)
         .toDouble
 
-    private def buildCharts(prices: List[Double]): F[File] = graphs.plot(
+    private def buildCharts(prices: NonEmptyList[Double]): F[File] = graphs.plot(
       Input(
         List(
           Input.Data(
-            seq = prices,
+            seq = prices.toList,
             main = s"USD/RUB",
             xlab = {config.figi},
             ylab = s"RUB",
-            color = nspl.RedBlue(0, prices.maxOption.getOrElse(200 /* :holypeka: */))
+            color = nspl.RedBlue(0, prices.maximum)
           )
         )
       )
