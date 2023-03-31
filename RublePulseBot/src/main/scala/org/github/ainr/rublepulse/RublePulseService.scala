@@ -38,14 +38,14 @@ object RublePulseService {
         .toNel
         .map(_.map(_.price))
         .map(movingAverage(_, 20))
-        .flatMap(prices => analyse(prices).map(result => (prices, result)))
-        .traverse {
+        .mproduct(analyse)
+        .traverse_ {
           case (prices, analyseResult) => for {
             charts <- buildCharts(prices)
             _ <- bot.interpret(SendPhoto(chatId = config.chatId, photo = InputPartFile(charts), caption = analyseResult.some) :: Nil)
             _ <- logger.info(s"Processing records: ${lastPrices.toList.mkString(", ")}")
           } yield ()
-        }.as(())
+        }
       }
 
     // todo - make it better
