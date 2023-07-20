@@ -41,10 +41,10 @@ libraryDependencies ++= Seq(
   "io.grpc" % "grpc-netty-shaded" % "1.53.0",
   "io.grpc" % "grpc-protobuf" % "1.53.0",
   "io.grpc" % "grpc-api" % "1.53.0",
-  "co.fs2" %% "fs2-io" % "3.6.1",
-  "co.fs2" %% "fs2-core" % "3.6.1",
-  "co.fs2" %% "fs2-reactive-streams" % "3.6.1",
-  "co.fs2" %% "fs2-scodec" % "3.6.1",
+  "co.fs2" %% "fs2-io" % "3.7.0",
+  "co.fs2" %% "fs2-core" % "3.7.0",
+  "co.fs2" %% "fs2-reactive-streams" % "3.7.0",
+  "co.fs2" %% "fs2-scodec" % "3.7.0",
   "com.github.fd4s" %% "fs2-kafka" % "3.0.0-M8",
   "is.cir" %% "ciris" % "3.1.0",
   "com.lihaoyi" %% "sourcecode" % "0.3.0",
@@ -55,8 +55,6 @@ libraryDependencies ++= Seq(
   "io.circe" %% "circe-core" % "0.14.5",
   "io.circe" %% "circe-parser" % "0.14.5",
   "io.circe" %% "circe-generic" % "0.14.5",
-  "dev.profunktor" %% "redis4cats-effects" % "1.4.0",
-  "dev.profunktor" %% "redis4cats-streams" % "1.4.0"
 )
 
 

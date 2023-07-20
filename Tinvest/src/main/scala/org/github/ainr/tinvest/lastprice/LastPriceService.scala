@@ -3,18 +3,14 @@ package org.github.ainr.tinvest.lastprice
 import cats.Monad
 import cats.effect.kernel.Temporal
 import cats.syntax.all._
-import io.circe.generic.auto._
-import io.circe.syntax._
+import fs2.concurrent.Topic
 import org.github.ainr.configurations.TinvestConfig
-import org.github.ainr.redis.producer.Producer
 import ru.tinkoff.piapi.contract.v1.marketdata._
-
-import scala.concurrent.duration.DurationInt
 
 class LastPriceService[F[_]: Monad: Temporal](
   configs: TinvestConfig,
   lastPriceRepository: LastPriceRepository[F],
-  producer: Producer[F, LastPriceEvent]
+  topic: Topic[F, LastPriceEvent]
 ) {
 
   def stream: F[fs2.Stream[F, Unit]] = {
@@ -28,17 +24,12 @@ class LastPriceService[F[_]: Monad: Temporal](
         )
       )
       .map { marketData =>
-        producer.produce(
-          //fs2.Stream.awakeEvery(1000 milliseconds) >> fs2.Stream.eval(LastPriceEvent("1212", 1).pure)
-          marketData
-            .map(getLastPrice)
-            .collect { case Some(a) => a }
-        )(toJson)
+        marketData
+          .map(getLastPrice)
+          .collect { case Some(a) => a }
+          .map(topic.publish1)
       }
   }
-
-  private def toJson: fs2.Pipe[F, LastPriceEvent, String] =
-    _.evalMap(_.asJson.noSpaces.pure[F])
 
   def getLastPrice(response: MarketDataResponse): Option[LastPriceEvent] = { // todo - replace raw String to Type
     (
