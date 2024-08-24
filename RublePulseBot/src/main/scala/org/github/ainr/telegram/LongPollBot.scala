@@ -121,7 +121,6 @@ object LongPollBot {
             text = reaction.text,
             parseMode = reaction.parseMode,
             entities = reaction.entities,
-            disableWebPagePreview = reaction.disableWebPagePreview,
             replyMarkup = reaction.replyMarkup
           )
           .exec(api)

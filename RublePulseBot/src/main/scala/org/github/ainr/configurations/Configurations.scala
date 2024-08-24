@@ -11,21 +11,10 @@ import telegramium.bots.ChatIntId
 import scala.concurrent.duration.FiniteDuration
 
 final case class Configurations(
-  consumer: ConsumerConfig,
   telegram: TelegramConfig,
   rublePulseConfig: RublePulseConfig
 )
 
-final case class ProducerConfig(
-  url: String,
-  topic: String,
-)
-
-final case class ConsumerConfig(
-  url: String,
-  topic: String,
-  groupId: String
-)
 
 final case class RublePulseConfig(
   figi: String,
@@ -35,34 +24,14 @@ final case class RublePulseConfig(
   sizeLimit: Int,
 )
 
-final case class Producers(
-  lastPriceEvents: ProducerConfig,
-  portfolioEvents: ProducerConfig
-)
-
-final case class Subscribes(
-  lastPricesFor: List[String]
-)
-
-final case class Portfolio(
-  accounts: List[String]
-)
-
 object Configurations {
 
   def load[F[_]: Async]: F[Configurations] = {
 
     val config = ConfigFactory.load("reference.conf")
 
-    val consumer = hoconAt(config)("consumer")
     val telegram = hoconAt(config)("telegram")
     val rublePulse = hoconAt(config)("rublePulse")
-
-    val consumerConfig: ConfigValue[Effect, ConsumerConfig] = (
-      consumer("url").as[String],
-      consumer("topic").as[String],
-      consumer("groupId").as[String]
-    ).mapN(ConsumerConfig.apply)
 
     val telegramConfig: ConfigValue[Effect, TelegramConfig] = (
       telegram("url").as[String],
@@ -77,7 +46,7 @@ object Configurations {
       rublePulse("sizeLimit").as[Int]
     ).mapN(RublePulseConfig.apply)
 
-    (consumerConfig, telegramConfig, rublePulseConfig)
+    (telegramConfig, rublePulseConfig)
       .mapN(Configurations.apply)
       .load[F]
   }

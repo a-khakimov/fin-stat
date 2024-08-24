@@ -11,7 +11,6 @@ import io.circe.parser._
 import org.github.ainr.configurations.RublePulseConfig
 import org.github.ainr.graphs.{Graphs, Input}
 import org.github.ainr.logger.CustomizedLogger
-import org.github.ainr.redis.consumer.Consumer
 import org.github.ainr.telegram.reaction.{BotReactionsInterpreter, SendPhoto}
 import org.nspl
 import telegramium.bots.InputPartFile
@@ -25,7 +24,6 @@ trait RublePulseService[F[_]] {
 object RublePulseService {
   def apply[F[_]: Monad: Concurrent: Temporal](
     config: RublePulseConfig,
-    consumer: Consumer[F, LastPriceEvent],
     bot: BotReactionsInterpreter[F],
     logger: CustomizedLogger[F],
     graphs: Graphs[F]
@@ -96,12 +94,6 @@ object RublePulseService {
           case Right(event) if event.figi === config.figi => event
         }
 
-    override def start: F[Unit] =
-      consumer
-        .consume(fromJson)
-        .groupWithin(config.sizeLimit, config.timeLimit)
-        .evalMap(processEvents)
-        .compile
-        .drain
+    override def start: F[Unit] = ().pure[F]
   }
 }

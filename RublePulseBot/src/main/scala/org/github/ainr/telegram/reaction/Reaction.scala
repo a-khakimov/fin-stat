@@ -24,7 +24,6 @@ final case class EditMessage(
     text: String,
     parseMode: Option[ParseMode] = Option.empty,
     entities: List[MessageEntity] = List.empty,
-    disableWebPagePreview: Option[Boolean] = Option.empty,
     replyMarkup: Option[InlineKeyboardMarkup] = Option.empty
 ) extends Reaction
 
