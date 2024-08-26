@@ -64,8 +64,7 @@ object RublePulseService {
       val add = subtract.drop(period)
       val addAndSubtract = add.zip(subtract).map(Function.tupled(_ - _))
 
-      List.fill(period - 1)(values.head) ++:
-        addAndSubtract.scanLeftNel(first)(_ + _)
+      List.fill(period - 1)(values.head) ++: addAndSubtract.scanLeftNel(first)(_ + _)
     }
 
     private def scale(double: Double): Double =

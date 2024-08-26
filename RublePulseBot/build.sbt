@@ -7,6 +7,7 @@ ThisBuild / scalaVersion := "2.13.14"
 lazy val root = (project in file("."))
   .enablePlugins(BuildInfoPlugin)
   .enablePlugins(GitVersioning)
+  .enablePlugins(Fs2Grpc)
   .settings(
     name := "RublePulseBot",
     organization := "org.github.ainr",
@@ -51,7 +52,13 @@ libraryDependencies ++= Seq(
   "io.circe" %% "circe-generic" % "0.14.9",
   "io.github.pityka" %% "nspl-awt" % "0.6.0",
   "io.github.apimorphism" %% "telegramium-core" % "9.77.0",
-  "io.github.apimorphism" %% "telegramium-high" % "9.77.0"
+  "io.github.apimorphism" %% "telegramium-high" % "9.77.0",
+
+  // (optional) If you need scalapb/scalapb.proto or anything from
+  // google/protobuf/*.proto
+  "com.thesamet.scalapb" %% "scalapb-runtime" % "0.11.17" % "protobuf",
+  "io.grpc" % "grpc-netty-shaded" % scalapb.compiler.Version.grpcJavaVersion,
+  "com.aspose" % "aspose-total" % "24.7"
 )
 
 ThisBuild / assemblyMergeStrategy := {
