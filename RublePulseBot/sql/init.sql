@@ -1,0 +1,4 @@
+CREATE DATABASE invest;
+\c invest;
+
+CREATE TABLE
