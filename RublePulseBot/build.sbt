@@ -58,6 +58,9 @@ libraryDependencies ++= Seq(
 
   "io.github.pityka" %% "nspl-awt" % "0.6.0",
 
+  "tech.tablesaw" % "tablesaw-core" % "0.43.1",
+  "tech.tablesaw" % "tablesaw-jsplot" % "0.43.1",
+
   "io.github.apimorphism" %% "telegramium-core" % "9.77.0",
   "io.github.apimorphism" %% "telegramium-high" % "9.77.0",
 

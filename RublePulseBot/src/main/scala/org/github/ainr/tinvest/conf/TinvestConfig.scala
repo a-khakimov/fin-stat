@@ -6,3 +6,7 @@ final case class TinvestConfig(
   port: Int,
   token: String
 )
+
+final case class LastPriceSubscriptionsConfig(
+  instruments: List[String]
+)

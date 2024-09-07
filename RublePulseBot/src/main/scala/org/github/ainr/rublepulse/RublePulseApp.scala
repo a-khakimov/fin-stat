@@ -6,6 +6,7 @@ import doobie.hikari.HikariTransactor
 import org.github.ainr.configurations.Configurations
 import org.github.ainr.context.{Context, TrackingIdGen}
 import org.github.ainr.db.Database
+import org.github.ainr.db.repo.TinvestRepository
 import org.github.ainr.graphs.Graphs
 import org.github.ainr.logger.CustomizedLogger
 import org.github.ainr.telegram.BotModule
@@ -49,8 +50,9 @@ object RublePulseApp {
           botModule.bot, logger, graphs
         )
         _ <- Resource.eval(resources.supervisor.supervise(rublePulseService.start))
+        tinvestRepository <- TinvestRepository.make[IO](resources.transactor, logger)
+        _ <- TinvestModule.make[IO](configs.tinvestConfig, configs.lastPriceSubscriptionsConfig, resources.supervisor, logger, tinvestRepository)
         _ <- Resource.eval(botModule.bot.interpret(SendText(ChatIntId(174861972), "App started")))
-        _ <- TinvestModule.make[IO](configs.tinvestConfig, resources.supervisor, logger)
         _ <- Resource.eval(logger.info("App started"))
         _ <- Resource.eval(botModule.bot.start())
       } yield ()
