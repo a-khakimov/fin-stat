@@ -9,5 +9,11 @@ services:
     environment:
       - "POSTGRES_USER=docker"
       - "POSTGRES_PASSWORD=docker"
+      - "POSTGRES_HOST_AUTH_METHOD=trust"
     ports:
-      - "5433:5433"
+      - "5432:5432"
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080

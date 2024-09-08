@@ -2,12 +2,9 @@ package org.github.ainr.rublepulse
 
 import cats.Monad
 import cats.data.NonEmptyList
-import cats.implicits.catsSyntaxList
 import cats.effect.{Concurrent, Temporal}
+import cats.implicits.catsSyntaxList
 import cats.syntax.all._
-import fs2.Chunk
-import io.circe.generic.auto._
-import io.circe.parser._
 import org.github.ainr.configurations.RublePulseConfig
 import org.github.ainr.graphs.{Graphs, Input}
 import org.github.ainr.logger.CustomizedLogger
@@ -18,30 +15,27 @@ import telegramium.bots.InputPartFile
 import java.io.File
 
 trait RublePulseService[F[_]] {
-  def start: F[Unit]
+  def process(lastPrices: List[Double]): F[Unit]
 }
 
 object RublePulseService {
-  def apply[F[_]: Monad: Concurrent: Temporal](
+  def apply[F[_]: Monad: Concurrent: Temporal: CustomizedLogger](
     config: RublePulseConfig,
     bot: BotReactionsInterpreter[F],
-    logger: CustomizedLogger[F],
     graphs: Graphs[F]
   ): RublePulseService[F] = new RublePulseService[F] {
 
-    private def processEvents(lastPrices: Chunk[LastPriceEvent]): F[Unit] = {
-      println(s"Last prices ${lastPrices.toList.mkString(", ")}")
-
+    def process(lastPrices: List[Double]): F[Unit] = {
       lastPrices
         .toNel
-        .map(_.map(_.price))
-        .map(movingAverage(_, 20))
+        .map(movingAverage(_, Math.min(lastPrices.size / 2, 20)))
         .mproduct(analyse)
         .traverse_ {
           case (prices, analyseResult) => for {
-            charts <- buildCharts(prices)
-            _ <- bot.interpret(SendPhoto(chatId = config.chatId, photo = InputPartFile(charts), caption = analyseResult.some) :: Nil)
-            _ <- logger.info(s"Processing records: ${lastPrices.toList.mkString(", ")}")
+            charts <- buildCharts(prices, lastPrices)
+            _ <- bot.interpret(SendPhoto(chatId = config.chatId, photo = InputPartFile(charts), caption = analyseResult.some))
+            _ <- CustomizedLogger[F].info(s"Processing records: ${lastPrices.mkString(", ")}")
+            _ <- CustomizedLogger[F].info(s"Processing records: ${prices.toList.mkString(", ")}")
           } yield ()
         }
       }
@@ -63,8 +57,7 @@ object RublePulseService {
       val subtract = values.toList.map(_ / period)
       val add = subtract.drop(period)
       val addAndSubtract = add.zip(subtract).map(Function.tupled(_ - _))
-
-      List.fill(period - 1)(values.head) ++: addAndSubtract.scanLeftNel(first)(_ + _)
+      addAndSubtract.scanLeftNel(first)(_ + _)
     }
 
     private def scale(double: Double): Double =
@@ -72,7 +65,7 @@ object RublePulseService {
         .setScale(2, BigDecimal.RoundingMode.HALF_DOWN)
         .toDouble
 
-    private def buildCharts(prices: NonEmptyList[Double]): F[File] = graphs.plot(
+    private def buildCharts(prices: NonEmptyList[Double], prices2: List[Double]): F[File] = graphs.plot(
       Input(
         List(
           Input.Data(
@@ -81,18 +74,16 @@ object RublePulseService {
             xlab = {config.figi},
             ylab = s"RUB",
             color = nspl.RedBlue(0, prices.maximum)
-          )
+          ),
+          Input.Data(
+            seq = prices2,
+            main = s"USD/RUB 2",
+            xlab = {config.figi},
+            ylab = s"RUB",
+            color = nspl.RedBlue(0, 0.2)
+          ),
         )
       )
     )
-
-    // TODO: Create repo layer
-    private def fromJson: fs2.Pipe[F, String, LastPriceEvent] =
-      _.evalMap(e => decode[LastPriceEvent](e).pure[F])
-        .collect {
-          case Right(event) if event.figi === config.figi => event
-        }
-
-    override def start: F[Unit] = ().pure[F]
   }
 }

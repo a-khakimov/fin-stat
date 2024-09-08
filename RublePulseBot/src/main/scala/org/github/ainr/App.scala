@@ -1,17 +1,17 @@
-package org.github.ainr.rublepulse
+package org.github.ainr
 
 import cats.effect.std.Supervisor
 import cats.effect.{IO, Resource, Sync}
-import doobie.hikari.HikariTransactor
+import doobie.Transactor
 import org.github.ainr.configurations.Configurations
 import org.github.ainr.context.{Context, TrackingIdGen}
 import org.github.ainr.db.Database
 import org.github.ainr.db.repo.TinvestRepository
 import org.github.ainr.graphs.Graphs
 import org.github.ainr.logger.CustomizedLogger
+import org.github.ainr.rublepulse.RublePulseModule
 import org.github.ainr.telegram.BotModule
 import org.github.ainr.telegram.reaction.SendText
-import org.github.ainr.tinvest.TinvestModule
 import org.http4s
 import org.http4s.blaze.client.BlazeClientBuilder
 import org.typelevel.log4cats.LoggerName
@@ -20,12 +20,12 @@ import telegramium.bots.ChatIntId
 
 import scala.language.postfixOps
 
-object RublePulseApp {
+object App {
 
   private final case class Resources(
     supervisor: Supervisor[IO],
     httpClient: http4s.client.Client[IO],
-    transactor: HikariTransactor[IO],
+    transactor: Transactor[IO],
   )
 
   private def buildResources(configs: Configurations): Resource[IO, Resources] = for {
@@ -37,21 +37,18 @@ object RublePulseApp {
   def run: IO[Unit] = for {
     context <- Context.make
     trackingIdGen = TrackingIdGen(context)
-    logger = CustomizedLogger(Slf4jLogger.getLogger[IO](Sync[IO], LoggerName("RublePulseApp")), context)
+    logger = CustomizedLogger.make[IO](Slf4jLogger.getLogger[IO](Sync[IO], LoggerName("RublePulseApp")), context)
     configs <- Configurations.load[IO]
     _ <- {
+      implicit val lggr: CustomizedLogger[IO] = logger
       val app = for {
         resources <- buildResources(configs)
         _ <- Resource.eval(logger.info("Resources ok"))
         botModule = BotModule(configs.telegram, resources.httpClient)(context, logger, trackingIdGen)
         graphs <- Graphs[IO]()
-        rublePulseService = RublePulseService(
-          configs.rublePulseConfig,
-          botModule.bot, logger, graphs
-        )
-        _ <- Resource.eval(resources.supervisor.supervise(rublePulseService.start))
         tinvestRepository <- TinvestRepository.make[IO](resources.transactor, logger)
-        _ <- TinvestModule.make[IO](configs.tinvestConfig, configs.lastPriceSubscriptionsConfig, resources.supervisor, logger, tinvestRepository)
+        _ <- RublePulseModule.make[IO](configs.rublePulseConfig, resources.supervisor, graphs, botModule.bot, tinvestRepository)
+        //_ <- TinvestModule.make[IO](configs.tinvestConfig, configs.lastPriceSubscriptionsConfig, resources.supervisor, logger, tinvestRepository)
         _ <- Resource.eval(botModule.bot.interpret(SendText(ChatIntId(174861972), "App started")))
         _ <- Resource.eval(logger.info("App started"))
         _ <- Resource.eval(botModule.bot.start())

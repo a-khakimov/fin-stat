@@ -34,7 +34,7 @@ object TinvestModule {
     instrumentsService <- InstrumentsServiceFs2Grpc.stubResource[F](managedChannel)
     //findInstrumentResponse <- Resource.eval {
     //  instrumentsService.findInstrument(FindInstrumentRequest(
-    //    query = "BBG0013HGFT4"
+    //    query = "Ozon"
     //  ), meta)
     //}
     //_ <- Resource.eval(
@@ -45,7 +45,7 @@ object TinvestModule {
     //)
     _ <- Resource.eval {
       supervisor.supervise {
-        marketDataStreamService.marketDataServerSideStream(
+        val unstableStream = marketDataStreamService.marketDataServerSideStream(
             MarketDataServerSideStreamRequest(
               subscribeLastPriceRequest = SubscribeLastPriceRequest(
                 subscriptionAction = SubscriptionAction.SUBSCRIPTION_ACTION_SUBSCRIBE,
@@ -54,15 +54,22 @@ object TinvestModule {
             ),
             ctx = meta
           )
-          .flatTap(response => fs2.Stream.eval {
-            response.payload match {
-              case Payload.SubscribeLastPriceResponse(status) => status.lastPriceSubscriptions.traverse {
-                subscription => logger.info(s"Subscription status: ${subscription.subscriptionStatus.name} (${subscription.figi}, ${subscription.subscriptionId})")
+          .flatTap { response =>
+            fs2.Stream.eval {
+              response.payload match {
+                case Payload.SubscribeLastPriceResponse(status) => status.lastPriceSubscriptions.traverse {
+                  subscription => logger.info(s"Subscription status: ${subscription.subscriptionStatus.name} (${subscription.figi}, ${subscription.subscriptionId})")
+                }
+                case Payload.LastPrice(price) => tinvestRepository.saveInstrumentLastPrice(price)
+                case _ => Async[F].unit
               }
-              case Payload.LastPrice(price) => tinvestRepository.saveInstrumentLastPrice(price)
-              case _ => Async[F].unit
             }
-          })
+          }
+
+        unstableStream
+          .handleErrorWith { cause =>
+            fs2.Stream.eval(logger.error(cause)("Stream failed, retrying...")) >> unstableStream
+          }
           .compile
           .drain
       }

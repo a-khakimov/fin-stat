@@ -130,7 +130,9 @@ trait CustomizedLogger[F[_]] {
 
 object CustomizedLogger {
 
-  def apply[F[_]: Monad](
+  def apply[F[_]](implicit logger: CustomizedLogger[F]): CustomizedLogger[F] = implicitly
+
+  def make[F[_]: Monad](
       logger: SelfAwareStructuredLogger[F],
       context: Context[F]
   ): CustomizedLogger[F] = {
